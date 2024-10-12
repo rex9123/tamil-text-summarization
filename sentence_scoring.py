@@ -65,6 +65,6 @@ if __name__ == "__main__":
 
   # Print summary
   for s in generateSummary(PATH, SIZE, HEADING):
-    print s
+    print (s)
 
 

@@ -1,5 +1,5 @@
 import math
-import editdistance
+import editdistance # type: ignore
 
 def euclideanDistance(vector1, vector2):
   dist = [(a - b)**2 for a, b in zip(vector1, vector2)]

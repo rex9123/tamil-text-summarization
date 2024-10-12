@@ -1,6 +1,6 @@
 from nltk.tokenize import sent_tokenize, word_tokenize
 from nltk.util import ngrams
-from freader import FileReader
+from util.freader import FileReader
 
 class Preprocessor:
   def __init__(self, filePath, ngrams=1):

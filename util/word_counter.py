@@ -1,4 +1,4 @@
-from stemmer import stem
+from util.stemmer import stem
 class WordCounter:
   def __init__(self, sCount):
     self.wordDict = { }

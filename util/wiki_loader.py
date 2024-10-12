@@ -2,82 +2,90 @@
 import os
 import wikipedia
 import re
-
 from nltk.tokenize import sent_tokenize, word_tokenize
 
 wikipedia.set_lang("ta")
 
 TOPICS = [
-  #"பல்லவர்",
-  # Names of indian cities
-  "சென்னை",
-  "பெங்களூர்",
-  "தில்லி",
-  "கொல்கத்தா",
-  "மும்பை"
+    "சென்னை",
+    "பெங்களூர்",
+    "தில்லி",
+    "கொல்கத்தா",
+    "மும்பை"
 ]
 
 SUMMARY_PATH = "../test/summaries"
 ARTICLE_PATH = "../test/data"
-TITLE_PATH   = "../test/title"
+TITLE_PATH = "../test/title"
 
-ELIMINATION_TRESHOLD = 0.1
-PARAGRAPH_TRESHOLD = 15
-
+ELIMINATION_THRESHOLD = 0.1
+PARAGRAPH_THRESHOLD = 15
 SUMMARY_SIZE = 8
 
+# Create directories if they do not exist
+os.makedirs(SUMMARY_PATH, exist_ok=True)
+os.makedirs(ARTICLE_PATH, exist_ok=True)
+os.makedirs(TITLE_PATH, exist_ok=True)
 
-def getContentRichParagrahs(d):
-  wordCount = { }
-  paragraph = re.split("\n{1,}", d)
+def getContentRichParagraphs(d):
+    wordCount = {}
+    paragraph = re.split("\n{1,}", d)
 
-  for i in range(len(paragraph)):
-    wordCount[i] = len( word_tokenize( paragraph[i] ) )
+    for i in range(len(paragraph)):
+        wordCount[i] = len(word_tokenize(paragraph[i]))
 
-  maxwordCount = max(wordCount.values())
+    maxWordCount = max(wordCount.values())
 
-  # Filtering the very small lines
-  selectedParagraphs = filter(lambda l: float(wordCount[l]) / maxwordCount >= ELIMINATION_TRESHOLD, wordCount.keys())
+    # Filtering the very small lines
+    selectedParagraphs = list(filter(lambda l: float(wordCount[l]) / maxWordCount >= ELIMINATION_THRESHOLD, wordCount.keys()))
 
-  return "\n".join( map(lambda l: paragraph[l], selectedParagraphs)[0:PARAGRAPH_TRESHOLD] )
+    return "\n".join([paragraph[l] for l in selectedParagraphs[0:PARAGRAPH_THRESHOLD]])
 
 
 def cleanContent(d, contentRich=False):
-  d = re.sub(r'[a-zA-Z\(\)\'\"\[\]\*]', '', d)
+    if isinstance(d, bytes):
+        d = d.decode('utf-8')  # Decode bytes to string if necessary
 
-  d = ( d if not contentRich else getContentRichParagrahs(d) )
-  d = re.sub('\s{2,}', ' ', d)
-  d = re.sub('\n{3,}', '\n\n', d)
+    d = re.sub(r'[a-zA-Z\(\)\'\"\[\]\*]', '', d)
 
-  d = re.sub('[\.\s]?\.+', '.', d)
-  d = re.sub('[\.\s]?\.+', '.', d)
+    d = (d if not contentRich else getContentRichParagraphs(d))
+    d = re.sub('\s{2,}', ' ', d)
+    d = re.sub('\n{3,}', '\n\n', d)
 
-  # HOT FIXES
-  d = d.encode('UTF-8')
-  d = re.sub('\xe0\xae\x95\xe0\xae\xbf.\xe0\xae\xaa\xe0\xae\xbf.', '\xe0\xae\x95\xe0\xae\xbf.\xe0\xae\xaa\xe0\xae\xbf', d)
-  d = re.sub('\xe0\xae\x95\xe0\xae\xbf.\xe0\xae\xae\xe0\xaf\x80.', '\xe0\xae\x95\xe0\xae\xbf.\xe0\xae\xae\xe0\xaf\x80', d)
-  d = re.sub('\xe0\xae\x95\xe0\xae\xbf.\xe0\xae\xae\xe0\xaf\x81.', '\xe0\xae\x95\xe0\xae\xbf.\xe0\xae\xae\xe0\xaf\x81', d)
-  d = d.decode('UTF-8')
+    d = re.sub('[\.\s]?\.+', '.', d)
 
-  return d
+    # HOT FIXES
+    d = re.sub(r'\xe0\xae\x95\xe0\xae\xbf\.\xe0\xae\xaa\xe0\xae\xbf\.','\xe0\xae\x95\xe0\xae\xbf\.\xe0\xae\xaa\xe0\xae\xbf', d)
+    d = re.sub(r'\xe0\xae\x95\xe0\xae\xbf\.\xe0\xae\xae\xe0\xaf\x80\.','\xe0\xae\x95\xe0\xae\xbf\.\xe0\xae\xAE\xe0\xaf\x80', d)
+    d = re.sub(r'\xe0\xae\x95\xe0\xae\xbf\.\xe0\xae\xAE\xe0\xaf\x81\.','\xe0\xae\x95\xe0\xae\xbf\.\xe0\xae\xAE\xe0\xaf\x81', d)
+
+    return d
+
 
 def cleanSummary(d):
-  return "\n".join( sent_tokenize( cleanContent(d) )[0:SUMMARY_SIZE] )
+    return "\n".join(sent_tokenize(cleanContent(d))[0:SUMMARY_SIZE])
+
 
 def filterSummaryFromContent(content, summary):
-  return content.replace(summary, '')
+    return content.replace(summary, '')
 
 
 for i in range(len(TOPICS)):
-  wiki = wikipedia.page(TOPICS[i])
-  fileName = "article-" + str(i + 1)
+    wiki = wikipedia.page(TOPICS[i])
+    fileName = "article-" + str(i + 1)
 
-  summary = wiki.summary
-  content = filterSummaryFromContent(wiki.content, wiki.summary)
-  title   = wiki.title
+    summary = wiki.summary
+    content = filterSummaryFromContent(wiki.content, wiki.summary)
+    title = wiki.title
 
-  open(os.path.join(SUMMARY_PATH, fileName), "w+").write(cleanSummary(summary).encode('UTF-8'))
-  open(os.path.join(ARTICLE_PATH, fileName), "w+").write(cleanContent(content, contentRich=True).encode('UTF-8'))
-  open(os.path.join(TITLE_PATH,   fileName), "w+").write(cleanContent(title).encode('UTF-8'))
+    # Write summaries and articles directly as strings
+    with open(os.path.join(SUMMARY_PATH, fileName), "w+", encoding='utf-8') as f:
+        f.write(cleanSummary(summary))  # No need to encode
 
-  print TOPICS[i]
+    with open(os.path.join(ARTICLE_PATH, fileName), "w+", encoding='utf-8') as f:
+        f.write(cleanContent(content, contentRich=True))  # No need to encode
+
+    with open(os.path.join(TITLE_PATH, fileName), "w+", encoding='utf-8') as f:
+        f.write(cleanContent(title))  # No need to encode
+
+    print(TOPICS[i])
